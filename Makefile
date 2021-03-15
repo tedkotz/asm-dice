@@ -4,6 +4,7 @@ ASM=fasm
 
 $(PKG): $(SRCS)
 	$(ASM) $(SRCS) $(PKG)
+	xxd $(PKG)
 
 
 dice.hex: $(PKG)
@@ -15,6 +16,7 @@ clean-all: clean
 clean:
 	rm -f *.hex
 
-run:
+run: $(PKG)
 	bochs
 
+$(V).SILENT:
