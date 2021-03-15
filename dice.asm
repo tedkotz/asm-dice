@@ -3,6 +3,13 @@
 ;;; Can run from Master Boot Record
 ;;; written for FASM (ported from a86)
 ;;;
+
+; Defines
+CR = 13
+LF = 10
+NULL = 0
+
+
 ;        org     0100h           ;Setting causes fasm to generate a com file
         org 7C00h               ; 'origin' of Boot code
                                 ; helps make sure addresses don't change
@@ -43,10 +50,10 @@ check6: cmp     al,36h
 check7: cmp     al,37h
         jne     checkq
         mov     word [die],100
-checkq: cmp     al,71h
+checkq: cmp     al,"q"
         jne     checkt
         jmp     dice            ;end program
-checkt: cmp     al,74h
+checkt: cmp     al,"t"
         jne     checkc
 
         mov     di,dashes       ;print dashes
@@ -55,7 +62,7 @@ checkt: cmp     al,74h
         mov     ax,word [total]
         call    writeNum        ;disp total
         jmp     lbla
-checkc: cmp     al,63h
+checkc: cmp     al,"c"
         jne     cont
         jmp     dice
 
@@ -63,7 +70,7 @@ cont:   mov     ax,0fee9h       ;get next random number
         mul     word [seed]
         mov     word [seed], ax
 
-        mul     word [die]           ;rnd*dice
+        mul     word [die]      ;rnd*dice
 
         mov     bx,0ffffh       ;rnd*dice/max_rnd
         div     bx
@@ -77,11 +84,12 @@ cont:   mov     ax,0fee9h       ;get next random number
 seed:   dw      1
 die:    dw      0ffffh
 total:  dw      0
-dashes: db      "----",10,13,0
-menu:   db      "1-1d4 2-1d6 3-1d8 4-1d10 5-1d12 6-1d20 7-1d100 t-total c-clear q-quit",10,13,0
+dashes: db      "----",CR,LF,NULL
+menu:   db      "1-1d4 2-1d6 3-1d8 4-1d10 5-1d12 6-1d20 7-1d100 t-total c-clear q-quit",CR,LF,NULL
 
-;;; writeLine
-;    prints number in AX
+;;; writeNum
+;    prints number in AX as base 10
+;    @param AX number to print
 ;
 writeNum:
         pusha                   ; save registers
@@ -100,9 +108,9 @@ writeNum:
         pop     ax              ; pop 0 or print instruction
         cmp     ax, 0
         jne     .morePrint
-        mov     ax, 0e0ah       ; print newline
+        mov     ax, 0e00h + CR  ; print carriage return
         int     10h             ; print char [ah=0eh, bh=0, al=char]
-        mov     al, 0dh         ; print carriage return
+        mov     al, LF          ; print newline
         int     10h             ; print char [ah=0eh, bh=0, al=char]
 exitProc:
         popa                    ; restore registers
@@ -111,6 +119,7 @@ exitProc:
 ;;; writeLine
 ;    prints string pointed to by DS:DI
 ;    NOTE: does not handle strings across segment boundary.
+;    @param DS:DI pointer to start of zero terminated string
 ;
 writeLine:
         pusha                   ; save registers
@@ -118,7 +127,7 @@ writeLine:
         mov     ah, 0eh
 .getChar:
         mov     al, [di]        ; get character
-        cmp     al, 0
+        cmp     al, NULL
         je      exitProc
         int     10h             ; print char [ah=0eh, bh=0, al=char]
         inc     di              ; advance pointer to next char
