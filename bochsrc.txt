@@ -1,0 +1,3 @@
+boot:a
+floppya: 1_44=dice.bin, status=inserted
+display_library: sdl2
