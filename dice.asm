@@ -23,31 +23,31 @@ lbla:   mov     ah,00h          ;readin a char
         int     16h
 
         cmp     al,31h          ;check for 1
-        jnz     check2
+        jne     check2
         mov     word [die],4
 check2: cmp     al,32h
-        jnz     check3
+        jne     check3
         mov     word [die],6
 check3: cmp     al,33h
-        jnz     check4
+        jne     check4
         mov     word [die],8
 check4: cmp     al,34h
-        jnz     check5
+        jne     check5
         mov     word [die],10
 check5: cmp     al,35h
-        jnz     check6
+        jne     check6
         mov     word [die],12
 check6: cmp     al,36h
-        jnz     check7
+        jne     check7
         mov     word [die],20
 check7: cmp     al,37h
-        jnz     checkq
+        jne     checkq
         mov     word [die],100
 checkq: cmp     al,71h
-        jnz     checkt
+        jne     checkt
         jmp     dice            ;end program
 checkt: cmp     al,74h
-        jnz     checkc
+        jne     checkc
 
         mov     di,dashes       ;print dashes
         call    writeLine
@@ -56,7 +56,7 @@ checkt: cmp     al,74h
         call    writeNum        ;disp total
         jmp     lbla
 checkc: cmp     al,63h
-        jnz     cont
+        jne     cont
         jmp     dice
 
 cont:   mov     ax,0fee9h       ;get next random number
@@ -87,43 +87,42 @@ writeNum:
         pusha                   ; save registers
         mov     bx, 10          ; divive by 10 for base 10 printing
         mov     dx, 0
-moreDiv:
-        push    dx
+.moreDiv:
+        push    dx              ; push 0 or print instruction
         mov     dx, 0
         div     bx              ; ax = num/10, dx = num%10
         add     dx, 0e30h       ; convert to TTY print instruction
         cmp     ax, 0
-        jnz     moreDiv
-        mov     ax, dx
-morePrint:
-        int     10h
-        pop     ax
+        jne     .moreDiv
+        mov     ax, dx          ; move print instruction to ax for use
+.morePrint:
+        int     10h             ; print char [ah=0eh, bh=0, al=char]
+        pop     ax              ; pop 0 or print instruction
         cmp     ax, 0
-        jnz     morePrint
+        jne     .morePrint
         mov     ax, 0e0ah       ; print newline
-        int     10h
+        int     10h             ; print char [ah=0eh, bh=0, al=char]
         mov     al, 0dh         ; print carriage return
-        int     10h
+        int     10h             ; print char [ah=0eh, bh=0, al=char]
+exitProc:
         popa                    ; restore registers
-        ret
+        ret                     ; return to caller
 
 ;;; writeLine
 ;    prints string pointed to by DS:DI
+;    NOTE: does not handle strings across segment boundary.
 ;
 writeLine:
         pusha                   ; save registers
         mov     bx, 0h          ; setup for int 10h function selection
         mov     ah, 0eh
-getChar:
-        mov     al, [di]   ; get character
+.getChar:
+        mov     al, [di]        ; get character
         cmp     al, 0
-        jnz     displayChar
-        popa                    ; restore registers
-        ret
-displayChar:
-        int     10h
-        inc     di
-        jmp     getChar
+        je      exitProc
+        int     10h             ; print char [ah=0eh, bh=0, al=char]
+        inc     di              ; advance pointer to next char
+        jmp     .getChar
 
 
 ;; Boot sector magic
