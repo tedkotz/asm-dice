@@ -1,10 +1,12 @@
-        org     0100h           ;Setting causes fasm to generate a com file
-
 ;;;
 ;;; Simply Dice Roller program
 ;;; Can run from Master Boot Record
 ;;; written for FASM (ported from a86)
 ;;;
+;        org     0100h           ;Setting causes fasm to generate a com file
+        org 7C00h               ; 'origin' of Boot code
+                                ; helps make sure addresses don't change
+
         mov     ah,00h          ;\
         int     1ah             ; seed random number with timer
         mov     word [seed], dx ;/
@@ -82,3 +84,10 @@ menu:   db      "1-1d4 2-1d6 3-1d8 4-1d10 5-1d12 6-1d20 7-1d100 t-total c-clear 
 
 writeNum:
         ret
+
+writeLine:
+        ret
+
+;; Boot sector magic
+times 510-($-$$) db 0   ; pads out 0s until we reach 510th byte
+dw 0AA55h               ; BIOS magic number; BOOT magic #
