@@ -13,67 +13,81 @@ MAX_RAND = 0fff1h
 ;        org     0100h           ;Setting causes fasm to generate a com file
         org 7C00h               ; 'origin' of Boot code
                                 ; helps make sure addresses don't change
-
+init:
         mov     ah,00h          ;\
         int     1ah             ; seed random number with timer
         mov     word [seed], dx ;/
+        mov     ax, 0003h       ;goto textmode (80x25)
+        int     10h             ;
+.main:
+        call    dice
+;        int     20h
+        jmp     .main
+
+
 
 dice:
         mov     word [total],00h
-        mov     ax, 0003h       ;clear screen
+        mov     ax, 0600h       ;clear screen
+        mov     bh, 0ah         ;BG = black(0), FG = B. green(10)
+                                ;
+                                ; |    |     0  |     1  |     2  |     3  |
+                                ; |----|--------|--------|--------|--------|
+                                ; | 0+ | 000000 | 800000 | 008000 | 808000 |
+                                ; | 4+ | 000080 | 800080 | 008080 | c0c0c0 |
+                                ; | 8+ | 808080 | ff0000 | 00ff00 | ffff00 |
+                                ; | C+ | 0000ff | ff00ff | 00ffff | ffffff |
+                                ;
+        mov     cx, 0000h       ;start at 0,0
+        mov     dx, 184fh       ;end at 79,24
+        int     10h             ;
+        mov     ah, 02h         ;move cursor to top of screen
+        mov     bh, 00h
+        mov     dx, 0000h       ;start at 0,0
         int     10h             ;
 
         mov     di,menu         ;print menu
         call    writeLine
 
-lbla:   mov     ah,00h          ;readin a char
+.getKey:
+        mov     ah,00h          ;readin a char
         int     16h
 
-        cmp     al,31h          ;check for 1
-        jne     check2
-        mov     word [die],4
-check2: cmp     al,32h
-        jne     check3
-        mov     word [die],6
-check3: cmp     al,33h
-        jne     check4
-        mov     word [die],8
-check4: cmp     al,34h
-        jne     check5
-        mov     word [die],10
-check5: cmp     al,35h
-        jne     check6
-        mov     word [die],12
-check6: cmp     al,36h
-        jne     check7
-        mov     word [die],20
-check7: cmp     al,37h
-        jne     checkq
-        mov     word [die],100
-checkq: cmp     al,"q"
-        jne     checkt
-        jmp     dice            ;end program
-checkt: cmp     al,"t"
-        jne     checkc
+        cmp     al,"q"          ; case "q"
+        jne     .notq
+        ret                     ;end program
+.notq:
+
+        cmp     al,"c"          ; case "c"
+        je      dice            ; restart dice
+
+        cmp     al,"t"          ; case "t"
+        jne     .nott
 
         mov     di,dashes       ;print dashes
         call    writeLine
 
-        mov     ax,word [total]
-        call    writeNum        ;disp total
-        jmp     lbla
-checkc: cmp     al,"c"
-        jne     cont
-        jmp     dice
+        mov     ax,word [total] ;disp total
+        call    writeNum
+        jmp     .getKey
 
-cont:
-        mov     ax, MAX_RAND     ; get next random number
+.nott:
+        sub     al, "1"         ; al = key - '1'
+        cmp     al, 7           ; if(key - '1' >= 7) getNextKey()
+        jae     .getKey
+
+        xor     bh, bh          ; bx = key - '1'
+        mov     bl, al
+
+        mov     bl, byte[die+bx]; bx = die[key-'1']
+
+        mov     ax, MAX_RAND    ; get next random number
         mul     word [seed]
         inc     ax
         mov     word [seed], ax ; seed = (seed * MAX_RAND + 1) & 0xFFFF
 
         mov     ax, dx          ; rnd = ((seed * MAX_RAND) >> 16) & 0xFFFF
-        mul     word [die]      ; rnd*dice
+        mul     bx              ; rnd*dice
 
         mov     bx,MAX_RAND     ; rnd*dice/MAX_RAND
         div     bx
@@ -82,13 +96,13 @@ cont:
         add     word [total],ax
         call    writeNum
 
-        jmp     lbla
+        jmp     .getKey
 
 seed:   dw      1
-die:    dw      0ffffh
 total:  dw      0
 dashes: db      "----",CR,LF,NULL
 menu:   db      "1-1d4 2-1d6 3-1d8 4-1d10 5-1d12 6-1d20 7-1d100 t-total c-clear q-quit",CR,LF,NULL
+die:    db      4,6,8,10,12,20,100
 
 ;;; writeNum
 ;    prints number in AX as base 10
