@@ -8,7 +8,7 @@
 CR = 13
 LF = 10
 NULL = 0
-
+MAX_RAND = 0fff1h
 
 ;        org     0100h           ;Setting causes fasm to generate a com file
         org 7C00h               ; 'origin' of Boot code
@@ -66,19 +66,53 @@ checkc: cmp     al,"c"
         jne     cont
         jmp     dice
 
-cont:   mov     ax,0fee9h       ;get next random number
+cont:   mov     word [seed], 2
+        mov     cx, 0
+.getNextRand:
+        inc     cx
+        mov     ax, MAX_RAND     ; get next random number
         mul     word [seed]
-        mov     word [seed], ax
+        inc     ax
+        cmp     ax, 2
+        jz      .printResults
+        mov     word [seed], ax ; seed = (seed * MAX_RAND + 1) & 0xFFFF
+;        call    writeNum
 
-        mul     word [die]      ;rnd*dice
+        mov     ax, dx          ; rnd = ((seed * MAX_RAND) >> 16) & 0xFFFF
+        mul     word [die]      ; rnd*dice
 
-        mov     bx,0ffffh       ;rnd*dice/max_rnd
+        mov     bx,MAX_RAND     ; rnd*dice/MAX_RAND
         div     bx
 
-        inc     ax              ;rnd*dice/max_rnd+1
+
+        mov     bx,ax
+        shl     bx, 1
+        inc     word [counts + bx] ;
+        inc     ax              ; roll = rnd*dice/MAX_RAND+1
 
         add     word [total],ax
         call    writeNum
+        jmp     .getNextRand
+.printResults:
+        mov     di,dashes       ;print dashes
+        call    writeLine
+
+        mov     ax,cx
+        call    writeNum
+
+        mov     cx, 0
+.printNextCount:
+        mov     bx,cx
+        shl     bx, 1
+        mov     ax, word [counts + bx] ;
+        call    writeNum
+        inc     cx
+        cmp     cx, 20
+        jnz     .printNextCount
+
+
+
+
         jmp     lbla
 
 seed:   dw      1
@@ -86,6 +120,7 @@ die:    dw      0ffffh
 total:  dw      0
 dashes: db      "----",CR,LF,NULL
 menu:   db      "1-1d4 2-1d6 3-1d8 4-1d10 5-1d12 6-1d20 7-1d100 t-total c-clear q-quit",CR,LF,NULL
+counts: dw      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 
 ;;; writeNum
 ;    prints number in AX as base 10
