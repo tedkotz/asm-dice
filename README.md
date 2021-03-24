@@ -12,7 +12,8 @@ If you look in the git log you can see the original. It can fairly easily be
 modified back to generate the dos compatible .com file.
 
 A walk through of this code and the porting process is here.
-https://www.youtube.com/watch?v=tF2bwIxY2UI
+
+https://www.youtube.com/playlist?list=PLVd4RGBf8xPG6m_4rXrwW7qf0-xBs4eCs
 
 ## Files
 |File         |Description                                               |
